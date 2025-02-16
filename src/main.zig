@@ -1,4 +1,19 @@
 const std = @import("std");
+const thread = std.Thread;
+
+fn handleConnection(connection: std.net.Server.Connection) !void {
+    var buffer: [1024]u8 = undefined;
+    errdefer connection.stream.close();
+
+    // how do I break the loop on connection close?
+    // read or write should throw an error if connection close
+    // so it should break the loop... hopefully.
+    while (true) {
+        _ = try connection.stream.read(&buffer);
+        _ = try connection.stream.write(&buffer);
+        @memset(&buffer, 0);
+    }
+}
 
 pub fn main() !void {
     // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
@@ -18,11 +33,8 @@ pub fn main() !void {
     while (true) {
         std.debug.print("Listen for new connection.\n", .{});
         const connection = try server.accept();
-        var buffer: [1024]u8 = undefined;
-        _ = try connection.stream.read(&buffer);
-        std.debug.print("Input {any}.\n", .{buffer});
-        _ = try connection.stream.write(&buffer);
-        connection.stream.close();
+        var t = try thread.spawn(.{}, handleConnection, .{connection});
+        t.detach();
     }
 }
 
