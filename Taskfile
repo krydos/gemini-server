@@ -1,0 +1,14 @@
+#!/bin/bash
+
+function up {
+    zig build run -- certificate.crt
+}
+
+function default {
+    echo "$0 <task> <args>"
+    echo "Tasks:"
+    compgen -A function | cat -n
+}
+
+TIMEFORMAT="Task completed in %3lR"
+time ${@:-default}

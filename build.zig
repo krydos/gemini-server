@@ -15,12 +15,16 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
+    const tls_dep = b.dependency("tls", .{});
+
     const exe = b.addExecutable(.{
         .name = "gemini-server-zig",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
+
+    exe.root_module.addImport("tls", tls_dep.module("tls"));
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

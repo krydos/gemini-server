@@ -1,0 +1,3 @@
+[submodule "dependencies/tls.zig"]
+	path = dependencies/tls.zig
+	url = https://github.com/ianic/tls.zig.git

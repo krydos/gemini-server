@@ -1,23 +1,63 @@
 const std = @import("std");
+const tls = @import("tls");
 const thread = std.Thread;
 
-fn handleConnection(connection: std.net.Server.Connection) !void {
+fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config.CertKeyPair) !void {
+    // TODO: this should probably be a temp buffer.
+    // When connection.read(&buffer) is called
+    // it can return the same amount of bytes
+    // as the buffer size.
+    // It means that we tried to read from connection
+    // and we filled in our buffer completely which in turn means
+    // that there is POSSIBLY more data on the other end and
+    // we should read it again.
+    // Should come up with a dynamically allocated buffer.
     var buffer: [1024]u8 = undefined;
-    errdefer connection.stream.close();
+    errdefer raw_connection.stream.close();
 
-    // how do I break the loop on connection close?
-    // read or write should throw an error if connection close
-    // so it should break the loop... hopefully.
-    while (true) {
-        _ = try connection.stream.read(&buffer);
-        _ = try connection.stream.write(&buffer);
-        @memset(&buffer, 0);
+    var connection = try tls.server(raw_connection.stream, .{ .auth = auth });
+
+    const readLen = try connection.read(&buffer);
+
+    // TODO: this should be a loop in case we got
+    // an input greater than the buffer size.
+    if (readLen < buffer.len) {
+        std.debug.print("We've read everything from buffer {s}\n", .{buffer});
+    } else {
+        std.debug.print("we haven't read everything from buffer\n", .{});
     }
+
+    _ = try connection.write("20\r\n");
+    // only reply with the content and not the whole buffer
+    // because the rest of the buffer may contain some 0xFF stuff
+    _ = try connection.write(buffer[0..readLen]);
+
+    // gemini clients won't show the response until connection is closed
+    _ = try connection.close();
 }
 
 pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
     std.debug.print("Starting the server...\n", .{});
+
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
+
+    if (args.len < 2) {
+        std.debug.print("Must specify the cert as first arg...\n", .{});
+        std.process.exit(1);
+    }
+
+    const file_name = args[1];
+
+    const pg_file = try std.fs.cwd().openFile(file_name, .{});
+    defer pg_file.close();
+
+    // const file_name = if (args.len > 1) args[1] else "example/cert/pg2600.txt";
+    const dir = try std.fs.cwd().openDir(".", .{});
+    var auth = try tls.config.CertKeyPair.load(allocator, dir, "certificate.crt", "private.key");
 
     const ADDR = "0.0.0.0";
     const PORT = 1965;
@@ -33,7 +73,8 @@ pub fn main() !void {
     while (true) {
         std.debug.print("Listen for new connection.\n", .{});
         const connection = try server.accept();
-        var t = try thread.spawn(.{}, handleConnection, .{connection});
+        std.debug.print("Got new connection.\n", .{});
+        var t = try thread.spawn(.{}, handleConnection, .{ connection, &auth });
         t.detach();
     }
 }
