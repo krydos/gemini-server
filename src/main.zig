@@ -13,15 +13,9 @@ fn parsePath(uri: []u8) []const u8 {
 fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config.CertKeyPair, root_dir: []u8) !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    // TODO: this should probably be a temp buffer.
-    // When connection.read(&buffer) is called
-    // it can return the same amount of bytes
-    // as the buffer size.
-    // It means that we tried to read from connection
-    // and we filled in our buffer completely which in turn means
-    // that there is POSSIBLY more data on the other end and
-    // we should read it again.
-    // Should come up with a dynamically allocated buffer.
+
+    // 1024 is hard limit specified by the spec.
+    // TODO: reject requests that sends more data than that.
     var read_buffer: [1024]u8 = undefined;
 
     // gemini clients won't show the response until connection is closed
