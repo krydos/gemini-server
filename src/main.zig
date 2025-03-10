@@ -17,11 +17,11 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
 
     var connection = try tls.server(raw_connection.stream, .{ .auth = auth });
 
-    const readLen = try connection.read(&buffer);
+    const read_len = try connection.read(&buffer);
 
     // TODO: this should be a loop in case we got
     // an input greater than the buffer size.
-    if (readLen < buffer.len) {
+    if (read_len < buffer.len) {
         std.debug.print("We've read everything from buffer {s}\n", .{buffer});
     } else {
         std.debug.print("we haven't read everything from buffer\n", .{});
@@ -30,7 +30,7 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
     _ = try connection.write("20\r\n");
     // only reply with the content and not the whole buffer
     // because the rest of the buffer may contain some 0xFF stuff
-    _ = try connection.write(buffer[0..readLen]);
+    _ = try connection.write(buffer[0..read_len]);
 
     // gemini clients won't show the response until connection is closed
     _ = try connection.close();
@@ -50,12 +50,12 @@ pub fn main() !void {
         std.process.exit(1);
     }
 
-    const file_name = args[1];
+    const cert_file_name = args[1];
 
-    const pg_file = try std.fs.cwd().openFile(file_name, .{});
+    const pg_file = try std.fs.cwd().openFile(cert_file_name, .{});
     defer pg_file.close();
 
-    // const file_name = if (args.len > 1) args[1] else "example/cert/pg2600.txt";
+    // const cert_file_name = if (args.len > 1) args[1] else "example/cert/pg2600.txt";
     const dir = try std.fs.cwd().openDir(".", .{});
     var auth = try tls.config.CertKeyPair.load(allocator, dir, "certificate.crt", "private.key");
 
