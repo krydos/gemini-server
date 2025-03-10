@@ -1,7 +1,15 @@
 #!/bin/bash
 
 function up {
-    zig build run -- certificate.crt
+    zig build run -- certificate.crt $(pwd)/test_data/gemini-root
+}
+
+function debug {
+    lldb zig-out/bin/gemini-server-zig -- certificate.crt $(pwd)/test_data/gemini-root
+}
+
+function test {
+    zig build test
 }
 
 function default {
