@@ -2,7 +2,17 @@ const std = @import("std");
 const tls = @import("tls");
 const thread = std.Thread;
 
-fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config.CertKeyPair) !void {
+// we just return "/" if we can't parse the uri
+fn parsePath(uri: []u8) []const u8 {
+    const parsed_uri = std.Uri.parse(uri) catch {
+        return "/";
+    };
+    return parsed_uri.path.percent_encoded;
+}
+
+fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config.CertKeyPair, root_dir: []u8) !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
     // TODO: this should probably be a temp buffer.
     // When connection.read(&buffer) is called
     // it can return the same amount of bytes
@@ -12,28 +22,50 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
     // that there is POSSIBLY more data on the other end and
     // we should read it again.
     // Should come up with a dynamically allocated buffer.
-    var buffer: [1024]u8 = undefined;
-    errdefer raw_connection.stream.close();
+    var read_buffer: [1024]u8 = undefined;
+
+    // gemini clients won't show the response until connection is closed
+    defer raw_connection.stream.close();
 
     var connection = try tls.server(raw_connection.stream, .{ .auth = auth });
 
-    const read_len = try connection.read(&buffer);
+    const read_len = try connection.read(&read_buffer);
 
     // TODO: this should be a loop in case we got
     // an input greater than the buffer size.
-    if (read_len < buffer.len) {
-        std.debug.print("We've read everything from buffer {s}\n", .{buffer});
+    if (read_len < read_buffer.len) {
+        std.debug.print("We've read everything from buffer {s}\n", .{read_buffer[0..read_len]});
     } else {
         std.debug.print("we haven't read everything from buffer\n", .{});
     }
 
-    _ = try connection.write("20\r\n");
-    // only reply with the content and not the whole buffer
-    // because the rest of the buffer may contain some 0xFF stuff
-    _ = try connection.write(buffer[0..read_len]);
+    const parsed_path = std.mem.trimRight(u8, parsePath(read_buffer[0..read_len]), "\r\n");
 
-    // gemini clients won't show the response until connection is closed
-    _ = try connection.close();
+    // path to a file
+    const path_to_requested_file = std.mem.join(allocator, "", &.{ root_dir, parsed_path }) catch {
+        _ = try connection.write("50\r\n");
+        _ = try connection.write("Cannot constract a path to resource.");
+        return;
+    };
+
+    // can we open a file? default mode is readonly
+    const requested_file = std.fs.openFileAbsolute(path_to_requested_file, .{}) catch {
+        _ = try connection.write("51\r\n");
+        _ = try connection.write("Resource not found.");
+        return;
+    };
+
+    var requested_file_buffer: [1024]u8 = undefined;
+
+    _ = try connection.write("20\r\n");
+
+    var bytes_read = try requested_file.readAll(&requested_file_buffer);
+    while (bytes_read == requested_file_buffer.len) {
+        _ = try connection.write(requested_file_buffer[0..bytes_read]);
+        @memset(&requested_file_buffer, 0);
+        bytes_read = try requested_file.readAll(&requested_file_buffer);
+    }
+    _ = try connection.write(requested_file_buffer[0..bytes_read]);
 }
 
 pub fn main() !void {
@@ -50,7 +82,13 @@ pub fn main() !void {
         std.process.exit(1);
     }
 
+    if (args.len < 3) {
+        std.debug.print("Must root folder as second arg...\n", .{});
+        std.process.exit(1);
+    }
+
     const cert_file_name = args[1];
+    const root_dir = args[2];
 
     const pg_file = try std.fs.cwd().openFile(cert_file_name, .{});
     defer pg_file.close();
@@ -74,14 +112,7 @@ pub fn main() !void {
         std.debug.print("Listen for new connection.\n", .{});
         const connection = try server.accept();
         std.debug.print("Got new connection.\n", .{});
-        var t = try thread.spawn(.{}, handleConnection, .{ connection, &auth });
+        var t = try thread.spawn(.{}, handleConnection, .{ connection, &auth, root_dir });
         t.detach();
     }
-}
-
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
 }
