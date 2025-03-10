@@ -38,7 +38,7 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
     // path to a file
     const path_to_requested_file = std.mem.join(allocator, "", &.{ root_dir, parsed_path }) catch {
         _ = try connection.write("50\r\n");
-        _ = try connection.write("Cannot constract a path to resource.");
+        _ = try connection.write("Cannot construct a path to resource.");
         return;
     };
 
