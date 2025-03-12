@@ -36,11 +36,18 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
     const parsed_path = std.mem.trimRight(u8, parsePath(read_buffer[0..read_len]), "\r\n");
 
     // path to a file
-    const path_to_requested_file = std.mem.join(allocator, "", &.{ root_dir, parsed_path }) catch {
+    var path_to_requested_file = std.mem.join(allocator, "", &.{ root_dir, parsed_path }) catch {
         _ = try connection.write("50\r\n");
         _ = try connection.write("Cannot construct a path to resource.");
         return;
     };
+
+    // if path ends with .gmi then it's a file.
+    // TODO: this is very naive and quick/bad way of doing that.
+    // I should use std.fs to check if path is a file or a folder.
+    if (!std.mem.endsWith(u8, path_to_requested_file, ".gmi")) {
+        path_to_requested_file = try std.mem.concat(allocator, u8, &.{ std.mem.trimRight(u8, path_to_requested_file, "/"), "/", "index.gmi" });
+    }
 
     // can we open a file? default mode is readonly
     const requested_file = std.fs.openFileAbsolute(path_to_requested_file, .{}) catch {
