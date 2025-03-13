@@ -4,6 +4,10 @@ function up {
     zig build run -- certificate.crt $(pwd)/test_data/gemini-root
 }
 
+function watch {
+    zig build --watch
+}
+
 function debug {
     lldb zig-out/bin/gemini-server-zig -- certificate.crt $(pwd)/test_data/gemini-root
 }
