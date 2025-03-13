@@ -2,12 +2,15 @@ const std = @import("std");
 const tls = @import("tls");
 const thread = std.Thread;
 
-// we just return "/" if we can't parse the uri
-fn parsePath(uri: []u8) []const u8 {
-    const parsed_uri = std.Uri.parse(uri) catch {
-        return "/";
+fn parseUrl(uri: []u8) ?std.Uri {
+    return std.Uri.parse(uri) catch {
+        return null;
     };
-    return parsed_uri.path.percent_encoded;
+}
+
+// we just return "/" if we can't parse the uri
+fn parsePath(uri: *const std.Uri) []const u8 {
+    return uri.path.percent_encoded;
 }
 
 fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config.CertKeyPair, root_dir: []u8) !void {
@@ -38,7 +41,12 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
         return;
     }
 
-    const parsed_path = std.mem.trimRight(u8, parsePath(read_buffer[0..read_len]), "\r\n");
+    const uri = parseUrl(read_buffer[0..read_len]) orelse {
+        _ = try connection.write("59\r\n");
+        return;
+    };
+
+    const parsed_path = std.mem.trimRight(u8, parsePath(&uri), "\r\n");
 
     // path to a file
     var path_to_requested_file = std.mem.join(allocator, "", &.{ root_dir, parsed_path }) catch {
