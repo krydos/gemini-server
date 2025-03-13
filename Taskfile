@@ -12,6 +12,10 @@ function test {
     zig build test
 }
 
+function thirdparty-test-suite {
+    ~/ThirdParty/gemini-diagnostics/gemini-diagnostics
+}
+
 function default {
     echo "$0 <task> <args>"
     echo "Tasks:"
