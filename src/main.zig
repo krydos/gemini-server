@@ -18,19 +18,24 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
     // TODO: reject requests that sends more data than that.
     var read_buffer: [1024]u8 = undefined;
 
-    // gemini clients won't show the response until connection is closed
-    defer raw_connection.stream.close();
-
     var connection = try tls.server(raw_connection.stream, .{ .auth = auth });
+    // gemini clients won't show the response until connection is closed
+    defer connection.close() catch {}; // nothing to catch in here really.
 
     const read_len = try connection.read(&read_buffer);
 
     // TODO: this should be a loop in case we got
     // an input greater than the buffer size.
+    // should it be or not? The hard limit defined by spec is 1024
     if (read_len < read_buffer.len) {
         std.debug.print("We've read everything from buffer {s}\n", .{read_buffer[0..read_len]});
     } else {
         std.debug.print("we haven't read everything from buffer\n", .{});
+    }
+
+    // no response should be send if request doesn't end with \r\n
+    if (!std.mem.endsWith(u8, read_buffer[0..read_len], "\r\n")) {
+        return;
     }
 
     const parsed_path = std.mem.trimRight(u8, parsePath(read_buffer[0..read_len]), "\r\n");
@@ -52,13 +57,13 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
     // can we open a file? default mode is readonly
     const requested_file = std.fs.openFileAbsolute(path_to_requested_file, .{}) catch {
         _ = try connection.write("51\r\n");
-        _ = try connection.write("Resource not found.");
         return;
     };
 
     var requested_file_buffer: [1024]u8 = undefined;
 
-    _ = try connection.write("20\r\n");
+    // success header
+    _ = try connection.write("20 text/gemini \r\n"); // TODO: unhardcode mimetype
 
     var bytes_read = try requested_file.readAll(&requested_file_buffer);
     while (bytes_read == requested_file_buffer.len) {
@@ -67,6 +72,9 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
         bytes_read = try requested_file.readAll(&requested_file_buffer);
     }
     _ = try connection.write(requested_file_buffer[0..bytes_read]);
+
+    // send \r\n as a way to tell "it's all done"
+    _ = try connection.write("\r\n");
 }
 
 pub fn main() !void {
