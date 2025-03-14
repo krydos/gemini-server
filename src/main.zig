@@ -63,6 +63,12 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
         path_to_requested_file = try std.mem.concat(allocator, u8, &.{ std.mem.trimRight(u8, path_to_requested_file, "/"), "/", "index.gmi" });
     }
 
+    // the request should be valid utf8
+    if (!std.unicode.utf8ValidateSlice(path_to_requested_file)) {
+        _ = try connection.write("59\r\n");
+        return;
+    }
+
     // this one interprets all .. and .
     const resolved_path = try std.fs.path.resolve(allocator, &.{path_to_requested_file});
 
