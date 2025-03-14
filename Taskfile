@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function up {
-    zig build run -- certificate.crt $(pwd)/test_data/gemini-root
+    zig build run -- certificate.crt $(pwd)/test_data/gemini-root 1965
 }
 
 function watch {
@@ -18,6 +18,10 @@ function test {
 
 function thirdparty-test-suite {
     ~/ThirdParty/gemini-diagnostics/gemini-diagnostics
+}
+
+function release-fast {
+    zig build --release=fast
 }
 
 function default {
