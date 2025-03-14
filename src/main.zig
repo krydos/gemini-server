@@ -63,8 +63,17 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
         path_to_requested_file = try std.mem.concat(allocator, u8, &.{ std.mem.trimRight(u8, path_to_requested_file, "/"), "/", "index.gmi" });
     }
 
+    // this one interprets all .. and .
+    const resolved_path = try std.fs.path.resolve(allocator, &.{path_to_requested_file});
+
+    // check if the resolved path is in gemini's root directory
+    if (!std.mem.startsWith(u8, resolved_path, root_dir)) {
+        _ = try connection.write("59\r\n");
+        return;
+    }
+
     // can we open a file? default mode is readonly
-    const requested_file = std.fs.openFileAbsolute(path_to_requested_file, .{}) catch {
+    const requested_file = std.fs.openFileAbsolute(resolved_path, .{}) catch {
         _ = try connection.write("51\r\n");
         return;
     };
