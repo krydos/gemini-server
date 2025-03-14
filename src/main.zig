@@ -8,7 +8,7 @@ fn parseUrl(uri: []u8) ?std.Uri {
     };
 }
 
-fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config.CertKeyPair, root_dir: []u8) !void {
+fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config.CertKeyPair, root_dir: []u8, port: i32) !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
@@ -32,6 +32,13 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
         _ = try connection.write("59\r\n");
         return;
     };
+
+    if (uri.port) |p| {
+        if (p != port) {
+            _ = try connection.write("53\r\n");
+            return;
+        }
+    }
 
     const parsed_path = std.mem.trimRight(u8, uri.path.percent_encoded, "\r\n");
 
@@ -116,7 +123,7 @@ pub fn main() !void {
         std.debug.print("Listen for new connection.\n", .{});
         const connection = try server.accept();
         std.debug.print("Got new connection.\n", .{});
-        var t = try thread.spawn(.{}, handleConnection, .{ connection, &auth, root_dir });
+        var t = try thread.spawn(.{}, handleConnection, .{ connection, &auth, root_dir, PORT });
         t.detach();
     }
 }
