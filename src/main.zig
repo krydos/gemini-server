@@ -16,7 +16,10 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
     // Use 1026 as buffer size because URI should be followed by "\r\n"
     var read_buffer: [1026]u8 = undefined;
 
-    var connection = try tls.server(raw_connection.stream, .{ .auth = auth });
+    var connection = tls.server(raw_connection.stream, .{ .auth = auth }) catch {
+        raw_connection.stream.close();
+        return;
+    };
     // gemini clients won't show the response until connection is closed
     defer connection.close() catch {}; // nothing to catch in here really.
 
