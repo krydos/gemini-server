@@ -33,11 +33,18 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
         return;
     };
 
+    // port should match the port that we're listening at.
     if (uri.port) |p| {
         if (p != port) {
             _ = try connection.write("53\r\n");
             return;
         }
+    }
+
+    // do not accept any other schema except gemini
+    if (!std.mem.eql(u8, uri.scheme, "gemini")) {
+        _ = try connection.write("53\r\n");
+        return;
     }
 
     const parsed_path = std.mem.trimRight(u8, uri.path.percent_encoded, "\r\n");
