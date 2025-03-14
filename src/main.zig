@@ -125,6 +125,7 @@ pub fn main() !void {
 
     const cert_file_name = args[1];
     const root_dir = args[2];
+    const port: u16 = try std.fmt.parseInt(u16, args[3], 10);
 
     const pg_file = try std.fs.cwd().openFile(cert_file_name, .{});
     defer pg_file.close();
@@ -134,9 +135,8 @@ pub fn main() !void {
     var auth = try tls.config.CertKeyPair.load(allocator, dir, "certificate.crt", "private.key");
 
     const ADDR = "0.0.0.0";
-    const PORT = 1965;
 
-    const address = try std.net.Address.parseIp(ADDR, PORT);
+    const address = try std.net.Address.parseIp(ADDR, port);
     var server = std.net.Address.listen(address, .{}) catch |e| {
         std.debug.print("Error happened during listen ({s}).\n", .{@typeName(@TypeOf(e))});
         std.process.exit(1);
@@ -148,7 +148,7 @@ pub fn main() !void {
         std.debug.print("Listen for new connection.\n", .{});
         const connection = try server.accept();
         std.debug.print("Got new connection.\n", .{});
-        var t = try thread.spawn(.{}, handleConnection, .{ connection, &auth, root_dir, PORT });
+        var t = try thread.spawn(.{}, handleConnection, .{ connection, &auth, root_dir, port });
         t.detach();
     }
 }
