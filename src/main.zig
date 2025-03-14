@@ -8,18 +8,13 @@ fn parseUrl(uri: []u8) ?std.Uri {
     };
 }
 
-// we just return "/" if we can't parse the uri
-fn parsePath(uri: *const std.Uri) []const u8 {
-    return uri.path.percent_encoded;
-}
-
 fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config.CertKeyPair, root_dir: []u8) !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    // 1024 is hard limit specified by the spec.
-    // TODO: reject requests that sends more data than that.
-    var read_buffer: [1024]u8 = undefined;
+    // 1024 is hard limit specified by the spec but it's for URI part.
+    // Use 1026 as buffer size because URI should be followed by "\r\n"
+    var read_buffer: [1026]u8 = undefined;
 
     var connection = try tls.server(raw_connection.stream, .{ .auth = auth });
     // gemini clients won't show the response until connection is closed
@@ -27,16 +22,8 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
 
     const read_len = try connection.read(&read_buffer);
 
-    // TODO: this should be a loop in case we got
-    // an input greater than the buffer size.
-    // should it be or not? The hard limit defined by spec is 1024
-    if (read_len < read_buffer.len) {
-        std.debug.print("We've read everything from buffer {s}\n", .{read_buffer[0..read_len]});
-    } else {
-        std.debug.print("we haven't read everything from buffer\n", .{});
-    }
-
     // no response should be send if request doesn't end with \r\n
+    // this one also protects us from too big request body and sends
     if (!std.mem.endsWith(u8, read_buffer[0..read_len], "\r\n")) {
         return;
     }
@@ -46,7 +33,7 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
         return;
     };
 
-    const parsed_path = std.mem.trimRight(u8, parsePath(&uri), "\r\n");
+    const parsed_path = std.mem.trimRight(u8, uri.path.percent_encoded, "\r\n");
 
     // path to a file
     var path_to_requested_file = std.mem.join(allocator, "", &.{ root_dir, parsed_path }) catch {
