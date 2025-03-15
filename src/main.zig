@@ -137,9 +137,9 @@ pub fn main() !void {
     const dir = try std.fs.cwd().openDir(".", .{});
     var auth = try tls.config.CertKeyPair.load(allocator, dir, cert_file_name, key_file_name);
 
-    const ADDR = "0.0.0.0";
+    const ADDR = "0";
 
-    const address = try std.net.Address.parseIp(ADDR, port);
+    const address = try std.net.Address.resolveIp(ADDR, port);
     var server = std.net.Address.listen(address, .{}) catch |e| {
         std.debug.print("Error happened during listen ({s}).\n", .{@typeName(@TypeOf(e))});
         std.process.exit(1);
