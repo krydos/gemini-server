@@ -17,7 +17,6 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
     var read_buffer: [1026]u8 = undefined;
 
     var connection = tls.server(raw_connection.stream, .{ .auth = auth }) catch {
-        raw_connection.stream.close();
         return;
     };
     // gemini clients won't show the response until connection is closed
