@@ -99,9 +99,6 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
         bytes_read = try requested_file.readAll(&requested_file_buffer);
     }
     _ = try connection.write(requested_file_buffer[0..bytes_read]);
-
-    // send \r\n as a way to tell "it's all done"
-    _ = try connection.write("\r\n");
 }
 
 pub fn main() !void {
@@ -114,25 +111,32 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     if (args.len < 2) {
-        std.debug.print("Must specify the cert as first arg...\n", .{});
+        std.debug.print("Must specify root folder as first arg\n", .{});
         std.process.exit(1);
     }
 
     if (args.len < 3) {
-        std.debug.print("Must root folder as second arg...\n", .{});
+        std.debug.print("Must specify port as second arg\n", .{});
         std.process.exit(1);
     }
 
-    const cert_file_name = args[1];
-    const root_dir = args[2];
-    const port: u16 = try std.fmt.parseInt(u16, args[3], 10);
+    if (args.len < 4) {
+        std.debug.print("Must specify ssl certificate file name\n", .{});
+        std.process.exit(1);
+    }
 
-    const pg_file = try std.fs.cwd().openFile(cert_file_name, .{});
-    defer pg_file.close();
+    if (args.len < 5) {
+        std.debug.print("Must specify ssl key file name\n", .{});
+        std.process.exit(1);
+    }
 
-    // const cert_file_name = if (args.len > 1) args[1] else "example/cert/pg2600.txt";
+    const root_dir = args[1];
+    const port: u16 = try std.fmt.parseInt(u16, args[2], 10);
+    const cert_file_name = args[3];
+    const key_file_name = args[4];
+
     const dir = try std.fs.cwd().openDir(".", .{});
-    var auth = try tls.config.CertKeyPair.load(allocator, dir, "certificate.crt", "private.key");
+    var auth = try tls.config.CertKeyPair.load(allocator, dir, cert_file_name, key_file_name);
 
     const ADDR = "0.0.0.0";
 
