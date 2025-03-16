@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function up {
-    zig build run -- $(pwd)/test_data/gemini-root 1965 certificate.crt private.key
+    zig build run -- $(pwd)/test_data/gemini-root 1965 ./dummy-certs/dummy.crt ./dummy-certs/dummy.key
 }
 
 function watch {
@@ -9,7 +9,7 @@ function watch {
 }
 
 function debug {
-    lldb zig-out/bin/gemini-server-zig -- $(pwd)/test_data/gemini-root 1965 certificate.crt private.key
+    lldb zig-out/bin/gemini-server-zig -- $(pwd)/test_data/gemini-root 1965 ./dummy-certs/dummy.crt ./dummy-certs/dummy.key
 }
 
 function test {
