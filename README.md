@@ -1,3 +1,5 @@
+[![CI](https://github.com/krydos/gemini-server/actions/workflows/ci.yml/badge.svg)](https://github.com/krydos/gemini-server/actions/workflows/ci.yml)
+
 # Gemini Server
 
 Gemini server implementation in just ~150 lines of code (with comments).
