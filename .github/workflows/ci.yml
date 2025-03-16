@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+
+      - name: Build
+        run: zig build
+
+      - name: Run tests
+        run: zig build test
+
+      - name: Checkout gemini-diagnostics repo
+        uses: actions/checkout@v4
+        with:
+          repository: michael-lazar/gemini-diagnostics
+          path: ./gemini-diagnostics
+
+      - name: Start the server (in background)
+        run: zig build run -- $(pwd)/test_data/gemini-root 1965 ./dummy-certs/dummy.crt ./dummy-certs/dummy.key &
+
+      - name: Run gemini-diagnostics
+        run: ./Taskfile run-diagnostic

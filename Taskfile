@@ -30,6 +30,16 @@ function deploy {
     scp zig-out/bin/gemini-server-zig vpn-droplet:/home/gemini/gemini-php
 }
 
+# This function runs the gemini-diagnostics script from
+# https://github.com/michael-lazar/gemini-diagnostics.git
+#
+# It assumes that this repo is available in the root folder of this project.
+#
+# The purpose of this function is to ignore a few particular errors I don't plan fixing atm.
+function run-diagnostic {
+    ./gemini-diagnostics/gemini-diagnostics | grep "Failed 2 checks: TLSClaims, URLWrongHost"
+}
+
 function default {
     echo "$0 <task> <args>"
     echo "Tasks:"
