@@ -27,3 +27,8 @@ jobs:
 
       - name: Run tests
         run: zig build test
+
+      - name: Checkout gemini-diagnostics repo
+        uses: actions/checkout@v4
+        with:
+          repository: https://github.com/michael-lazar/gemini-diagnostics.git
