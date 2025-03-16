@@ -12,6 +12,10 @@ To start the server run:
 gemini-server /absolute/path/capsule/root/folder 1965 certificate.crt private.key
 ```
 
+The project is (mostly) complyent with [michael-lazar/gemini-diagnostics](https://github.com/michael-lazar/gemini-diagnostics).
+
+Currently it doesn't handle INPUT type of requests because I don't need them for my capsule.
+
 ## Build
 
 Just run `zig build`.
