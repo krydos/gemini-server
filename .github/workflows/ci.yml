@@ -33,5 +33,8 @@ jobs:
         with:
           repository: michael-lazar/gemini-diagnostics
 
+      - name: Run ls
+        run: ls -la
+
       - name: Run gemini-diagnostics
         run: .github/scripts/gemini-diagnostic-runner.sh
