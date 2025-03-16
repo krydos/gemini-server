@@ -32,3 +32,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: michael-lazar/gemini-diagnostics
+
+      - name: Run gemini-diagnostics
+        run: .github/scripts/gemini-diagnostic-runner.sh
