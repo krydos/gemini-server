@@ -22,7 +22,7 @@ jobs:
         with:
           version: master
 
-      - name: Build
+      - name: Run build (native for this worker)
         run: zig build
 
       - name: Run tests
@@ -35,7 +35,37 @@ jobs:
           path: ./gemini-diagnostics
 
       - name: Start the server (in background)
-        run: zig build run -- $(pwd)/test_data/gemini-root 1965 ./dummy-certs/dummy.crt ./dummy-certs/dummy.key &
+        run: ./zig-out/bin/gemini-server-zig $(pwd)/test_data/gemini-root 1965 ./dummy-certs/dummy.crt ./dummy-certs/dummy.key &
 
       - name: Run gemini-diagnostics
         run: ./Taskfile run-diagnostic
+
+      - name: Build x86_64-linux
+        run: |
+          zig build --release=fast -Dtarget=x86_64-linux
+          mv ./zig-out/bin/gemini-server-zig ./zig-out/bin/gemini-server_x86_64-linux
+
+      - name: Build aarch64-linux
+        run: |
+          zig build --release=fast -Dtarget=aarch64-linux
+          mv ./zig-out/bin/gemini-server-zig ./zig-out/bin/gemini-server_aarch64-linux
+
+      - name: Build x86_64-macos
+        run: |
+          zig build --release=fast -Dtarget=x86_64-macos
+          mv ./zig-out/bin/gemini-server-zig ./zig-out/bin/gemini-server_x86_64-macos
+
+      - name: Build aarch64-macos
+        run: |
+          zig build --release=fast -Dtarget=aarch64-macos
+          mv ./zig-out/bin/gemini-server-zig ./zig-out/bin/gemini-server_aarch64-macos
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ./zig-out/bin/gemini-server_x86_64-linux
+            ./zig-out/bin/gemini-server_aarch64-linux
+            ./zig-out/bin/gemini-server_x86_64-macos
+            ./zig-out/bin/gemini-server_aarch64-macos
