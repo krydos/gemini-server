@@ -22,6 +22,9 @@ jobs:
         with:
           version: master
 
+      - name: Run build (native for this worker)
+        run: zig build
+
       - name: Run tests
         run: zig build test
 
@@ -32,7 +35,7 @@ jobs:
           path: ./gemini-diagnostics
 
       - name: Start the server (in background)
-        run: zig build run -- $(pwd)/test_data/gemini-root 1965 ./dummy-certs/dummy.crt ./dummy-certs/dummy.key &
+        run: ./zig-out/bin/gemini-server-zig $(pwd)/test_data/gemini-root 1965 ./dummy-certs/dummy.crt ./dummy-certs/dummy.key &
 
       - name: Run gemini-diagnostics
         run: ./Taskfile run-diagnostic
