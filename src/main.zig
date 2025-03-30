@@ -85,6 +85,7 @@ fn handleConnection(raw_connection: std.net.Server.Connection, auth: *tls.config
         _ = try connection.write("51\r\n");
         return;
     };
+    defer requested_file.close();
 
     var requested_file_buffer: [1024]u8 = undefined;
 
